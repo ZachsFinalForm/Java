@@ -1,0 +1,401 @@
+/*
+ * Class Name: Utilites
+ * Author: Code by: Robert Jordan - Commentary by George and Zach
+ * Date Created: Apr 2, 2019 -- Commentary edited on Apr 3, 2019
+ * Synopsis: Utility methods for menus With comments to help simplify
+ */
+package test;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class Utilities {
+	// <editor-fold defaultstate="collapsed" desc="Static Fields">
+	private static final Scanner scanner = new Scanner(System.in);
+	// </editor-fold>
+
+       
+	public static void clearScreen() {
+		//Clears Screen in java 
+		try {
+			if (System.getProperty("os.name").contains("Windows"))
+				new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor(); //Windows Clear Screen
+			else
+				Runtime.getRuntime().exec("clear"); //Unix
+		} catch (IOException | InterruptedException ex) {}
+	}
+	
+	// <editor-fold defaultstate="expanded" desc="Print">
+        //Printing an error is slow and prevents race conditions with output
+	public static void printErr(String message) {
+		System.err.println(String.format("  %s", message));
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException ex) {
+			Logger.getLogger(Utilities.class.getName()).log(Level.SEVERE, null, ex);
+		}
+	}
+        //Centers and Wraps the error message 
+	public static void printErr(String message, int maxWidth, boolean centered) {
+                if (maxWidth == 0 || maxWidth == -1) {
+			if (centered)
+				System.err.println(center(message, maxWidth));
+			else
+				System.err.println(message);
+		}
+		else {
+			String[] lines = wordEllipsesSplit(message, maxWidth, centered);
+			for (int i = 0; i < lines.length; i++) {
+				if (centered)
+					System.err.println(center(lines[i], maxWidth));
+				else
+					System.err.println(lines[i]);
+			}
+		}
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException ex) {
+			Logger.getLogger(Utilities.class.getName()).log(Level.SEVERE, null, ex);
+		}
+	}
+        // Print a menu file
+	public static void printFile(String path, int maxWidth, boolean centered) 
+			throws FileNotFoundException, IOException
+	{
+		String[] contents = readAllLines(path);
+		printLines(contents, maxWidth, centered);
+	}
+        // Prints, wraps, and centers lines
+	public static void printLines(String[] contents, int maxWidth, boolean centered) {
+		for (int i = 0; i < contents.length; i++) {
+			printLine(contents[i], maxWidth, centered);
+		}
+	}
+	public static void printLine(String content, int maxWidth, boolean centered) {
+		if (maxWidth == 0 || maxWidth == -1) {
+			if (centered)
+				System.out.println(center(content, maxWidth));
+			else
+				System.out.println(content);
+		}
+		else {
+			String[] lines = wordEllipsesSplit(content, maxWidth, centered);
+			for (int i = 0; i < lines.length; i++) {
+				if (centered)
+					System.out.println(center(lines[i], maxWidth));
+				else
+					System.out.println(lines[i]);
+			}
+		}
+	}
+	// </editor-fold>
+
+	// <editor-fold defaultstate="expanded" desc="WaitForInput">
+        //Function to tell the person looking at the code "We don't need input"
+	public static void waitForInput() {
+		next();
+	}
+	public static void waitForInput(String message) {
+		next(message);
+	}
+	// </editor-fold>
+	
+	// <editor-fold defaultstate="expanded" desc="Next">
+        // Alias for scanner.next
+	public static String next() {
+                return scanner.nextLine();
+	}
+        // Displays message then waits for user input
+	public static String next(String message) {
+		System.out.printf("%s: ", message);
+		return next();
+	}
+        //Displays message then waits for non-empty input
+	public static String nextLine(String message) {
+		String input = null;
+		do {
+			if (input != null && input.length() == 0)
+				printErr("Input cannot be empty!");
+			input = next(message);
+		} while (input.length() == 0);
+		return input;
+	}
+        //Displays message then waits valid integer
+	public static Integer nextInt(String message)
+			
+	{
+		Integer value = null;
+		do {
+			String input = nextLine(message);
+			
+			try {
+				value = Integer.valueOf(input);
+			} catch (NumberFormatException ex) {
+				if (input.length() == 0)
+					printErr("Input cannot be empty!");
+				else
+					printErr("Invalid number!");
+			}
+		} while (value == null);
+		return value;
+	}
+        // Unsigned Integer, must be positive or 0
+	public static Integer nextUInt(String message)
+			
+	{
+		Integer value = null;
+		do {
+			value = nextInt(message);
+			if (value < 0) {
+				printErr("Invalid number, cannot be less than zero!");
+				value = null;
+			}
+		} while (value == null);
+		return value;
+	}
+        // Display message any double
+	public static Double nextDouble(String message)
+			
+	{
+		Double value = null;
+		do {
+			String input = nextLine(message);
+			
+			try {
+				value = Double.valueOf(input);
+			} catch (NumberFormatException ex) {
+				if (input.length() == 0)
+					printErr("Input cannot be empty!");
+				else
+					printErr("Invalid number!");
+			}
+		} while (value == null);
+		return value;
+	}
+        // Display message any double that is > or = 0
+	public static Double nextUDouble(String message)
+			
+	{
+		Double value = null;
+		do {
+			value = nextDouble(message);
+			if (value < 0) {
+				printErr("Invalid number, cannot be less than zero!");
+				value = null;
+			}
+		} while (value == null);
+		return value;
+	}
+        // Asks to input yes or no (Y or N)
+	public static Boolean nextBool(String message)
+			
+	{
+		message += " (y/n)";
+		String input = nextLine(message).toLowerCase();
+		while (!input.equals("yes") && !input.equals("y") && !input.equals("no") && !input.equals("n")) {
+			if (input.length() == 0)
+				printErr("Input cannot be empty!");
+			else
+				printErr("Invalid yes/no input!");
+			input = nextLine(message).toLowerCase();
+		}
+		return input.equals("yes") || input.equals("y");
+	}
+        //Ask for range of inputs from min to max and will print the range
+	public static Integer nextRange(String message, int min, int max)
+			
+	{
+		message += String.format(" (%s-%s)", min, max);
+		Integer choice = null;
+		do {
+			choice = nextInt(message);
+			if (choice < min) {
+				printErr(String.format("Choice cannot be less than %s!", min));
+				choice = null;
+			}
+			else if (choice > max) {
+				printErr(String.format("Choice cannot be greater than %s!", max));
+				choice = null;
+			}
+		} while (choice == null);
+		return choice;
+	}
+        //Wait for input of specific type or name from a list
+	public static String nextChoice(String message, String... choices)
+			
+	{
+		String choice = null;
+		do {
+			String input = nextLine(message);
+			for (int i = 0; i < choices.length; i++) {
+				if (input.equalsIgnoreCase(choices[i])) {
+					choice = input;
+					break;
+				}
+			}
+			if (choice == null)
+				printErr("Invalid choice!");
+		} while (choice == null);
+		return choice;
+	}
+	// </editor-fold>
+        // Read lines from a file to a array of lines
+        public static String[] readAllLines(String path)
+			throws FileNotFoundException, IOException
+	{
+		ArrayList<String> lines = new ArrayList<>();
+		try (FileInputStream fs = new FileInputStream(path)) {
+		//try (UnicodeBOMInputStream ubs = new UnicodeBOMInputStream(fs)) {
+		try (InputStreamReader sr = new InputStreamReader(fs)) {
+		try (BufferedReader reader = new BufferedReader(sr)) {
+			// Screw you too Java. <3
+			//ubs.skipBOM();
+			
+			String s;
+			while ((s = reader.readLine()) != null) {
+				lines.add(s);
+			}
+		}}}//}
+		return lines.toArray(new String[lines.size()]);
+	}
+        // Write all lines to a file
+	public static void writeAllLines(String path, String[] contents)
+			throws FileNotFoundException
+	{
+		try (PrintWriter writer = new PrintWriter(path)) {
+			for (int i = 0; i < contents.length; i++) {
+				writer.println(contents[i]);
+			}
+		}
+	}
+        // Get file as a single string
+	public static String readAllText(String path)
+			throws FileNotFoundException, IOException
+	{
+		StringBuilder str = new StringBuilder();
+		try (FileInputStream fs = new FileInputStream(path)) {
+		//try (UnicodeBOMInputStream ubs = new UnicodeBOMInputStream(fs)) {
+		try (InputStreamReader sr = new InputStreamReader(fs)) {
+		try (BufferedReader reader = new BufferedReader(sr)) {
+			// Screw you too Java. <3
+			//ubs.skipBOM();
+			
+			int c;
+			while ((c = reader.read()) != -1) {
+				str.append((char) c);
+			}
+		}}}//}
+		return str.toString();
+	}
+        //Write to file as a single string
+	public static void writeAllText(String path, String content)
+			throws FileNotFoundException
+	{
+		try (PrintWriter writer = new PrintWriter(path)) {
+			writer.print(content);
+		}
+	}
+        // Removes all white space from the start of the string
+        public static String trimStart(String s) {
+		return s.replaceAll("^\\s+", "");
+	}
+        // Removes all white space from the end of the string
+	public static String trimEnd(String s) {
+		return s.replaceAll("\\s+$", "");
+	}
+        // Pads the left of the string with whitespace
+	public static String padLeft(String s, int count) {
+		return padLeft(s, count, ' ');
+	}
+        // Pads the left of the string with selected character
+	public static String padLeft(String s, int count, char padding) {
+		count -= s.length();
+		if (count > 0)
+			return repeat(padding, count) + s;
+		return s;
+	}
+        // Pads the right of the string with whitespace
+	public static String padRight(String s, int count) {
+		return padRight(s, count, ' ');
+	}
+        // Pads the right of the string with selected character
+	public static String padRight(String s, int count, char padding) {
+		count -= s.length();
+		if (count > 0)
+			return s + repeat(padding, count);
+		return s;
+	}
+        // Repeat the character C length
+	public static String repeat(char c, int count) {
+		char[] chars = new char[count];
+		Arrays.fill(chars, ' ');
+		return new String(chars);
+	}
+        // Repeats a string instead of character
+	public static String repeat(String s, int count) {
+		StringBuilder str = new StringBuilder();
+		for (int i = 0; i < count; i++) {
+			str.append(s);
+		}
+		return str.toString();
+	}
+        // Centers a string specified width by padding wtih whitespace
+	public static String center(String line, int width) {
+		int offset = (width - line.length()) / 2;
+		char[] spaces = new char[offset];
+		Arrays.fill(spaces, ' ');
+		return new String(spaces) + line;
+	}
+        //Wrap words and put a - if a word does not fit on a line (Dash being last resort)
+	public static String[] wordEllipsesSplit(String line, int maxWidth, boolean trim) {
+		ArrayList<String> lines = new ArrayList<>();
+
+		// Only trim lines when word ellipses is performed
+		if (line.length() > maxWidth && trim)
+			line = line.trim();
+
+		// Split the text into multiple lines until they are all <= MenuWidth
+		while (line.length() > maxWidth) {
+			int index;
+			for (index = maxWidth; index > 0; index--) {
+				if (Character.isWhitespace(line.charAt(index)))
+					break;
+			}
+			if (index == 0) {
+				// Word is too long, perform character ellipses
+				lines.add(line.substring(0, maxWidth - 1) + "-");
+				line = line.substring(maxWidth - 1);
+			}
+			else {
+				// Whitespace found, perform word ellipses
+				// Only trim lines when word ellipses is performed
+				String lineToAdd = line.substring(0, index);
+				line = trimStart(line.substring(index));
+				if (trim) {
+					lineToAdd = lineToAdd.trim();
+				}
+				lines.add(lineToAdd);
+			}
+		}
+
+		// Add the final line
+		if (line.length() == 0 && lines.size() > 0) {
+			// Line is empty and word ellipses was performed, add nothing
+		}
+		else if (line.trim().length() == 0)
+			lines.add(""); // We can always trim whitespace when it's JUST whitespace
+		else
+			lines.add(line);
+
+		return lines.toArray(new String[lines.size()]);
+	}
+}
